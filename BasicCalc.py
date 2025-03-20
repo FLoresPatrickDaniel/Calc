@@ -1,4 +1,4 @@
-INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'LPAREN', 'RPAREN', 'EOF'
 
 class Token:
     def __init__(self, type_, value):
@@ -22,10 +22,7 @@ class Lexer:
 
     def advance(self):
         self.pos += 1
-        if self.pos > len(self.text) - 1:
-            self.current_char = None  
-        else:
-            self.current_char = self.text[self.pos]
+        self.current_char = self.text[self.pos] if self.pos < len(self.text) else None  
 
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
@@ -57,7 +54,15 @@ class Lexer:
             if self.current_char == '/':
                 self.advance()
                 return Token(DIV, '/')
+            if self.current_char == '(':
+                self.advance()
+                return Token(LPAREN, '(')
+            if self.current_char == ')':
+                self.advance()
+                return Token(RPAREN, ')')
+                
             self.error()
+            
         return Token(EOF, None)
 
 class Interpreter:
@@ -76,9 +81,15 @@ class Interpreter:
     
     def factor(self):
         token = self.current_token
-        self.eat(INTEGER)
-        return token.value
-
+        if token.type == INTEGER:
+            self.eat(INTEGER)
+            return token.value
+        elif token.type == LPAREN:
+            self.eat(LPAREN)
+            result = self.expr()  # Fixed function call
+            self.eat(RPAREN)
+            return result
+            
     def term(self):
         result = self.factor()
         
@@ -89,8 +100,8 @@ class Interpreter:
                 result = result * self.factor()
             elif token.type == DIV:
                 self.eat(DIV)
-                result = round(result / self.factor())
-        
+                result = result // self.factor()  # Keep division as float
+            
         return result
     
     def expr(self):
@@ -110,6 +121,8 @@ def main():
     while True:
         try:
             text = input("calc> ")
+            if not text.strip():
+                continue
             interpreter = Interpreter(text)
             result = interpreter.expr()
             print(result)
